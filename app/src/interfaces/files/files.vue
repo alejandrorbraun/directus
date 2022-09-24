@@ -8,9 +8,7 @@
 				:type="totalItemCount > 4 ? 'block-list-item-dense' : 'block-list-item'"
 			/>
 		</template>
-
 		<v-notice v-else-if="displayItems.length === 0">{{ t('no_items') }}</v-notice>
-
 		<v-list v-else>
 			<draggable
 				:force-fallback="true"
@@ -29,11 +27,10 @@
 						@click="editItem(element)"
 					>
 						<v-icon v-if="allowDrag" name="drag_handle" class="drag-handle" left @click.stop="() => {}" />
-						<render-template
-							:collection="relationInfo.junctionCollection.collection"
-							:item="element"
-							:template="templateWithDefaults"
-						/>
+						<template v-for="item in itemFields" :key="item">
+							<img v-if="item.includes('$thumbnail')" :src="thumbnailGet(element)" class="row-item" />
+							<span v-else class="row-item">{{ _.get(element, item) }}</span>
+						</template>
 						<div class="spacer" />
 						<v-icon
 							v-if="!disabled"
@@ -126,6 +123,7 @@
 </template>
 
 <script setup lang="ts">
+import { addTokenToURL } from '@/api';
 import { useRelationM2M } from '@/composables/use-relation-m2m';
 import { useRelationMultiple, RelationQueryMultiple, DisplayItem } from '@/composables/use-relation-multiple';
 import { computed, ref, toRefs } from 'vue';
@@ -140,6 +138,8 @@ import { usePermissionsStore } from '@/stores/permissions';
 import { useUserStore } from '@/stores/user';
 import { getFieldsFromTemplate } from '@directus/shared/utils';
 import { Filter } from '@directus/shared/types';
+import { addQueryToPath } from '@/utils/add-query-to-path';
+import _ from 'lodash';
 
 const props = withDefaults(
 	defineProps<{
@@ -176,6 +176,16 @@ const value = computed({
 		emit('input', val);
 	},
 });
+
+const itemFields = computed(() => {
+	const regex = /{{(.*?)}}/g;
+	if (props.template) return props.template.split(regex).filter((p) => p);
+	else return null;
+});
+
+function thumbnailGet(element) {
+	return addTokenToURL(addQueryToPath('/assets/' + element.directus_files_id.id, { key: 'system-small-cover' }));
+}
 
 const templateWithDefaults = computed(() => {
 	if (!relationInfo.value) return null;
@@ -458,5 +468,9 @@ const selectAllowed = computed(() => {
 
 .render-template {
 	height: 100%;
+}
+
+.row-item {
+	margin: 4px;
 }
 </style>
